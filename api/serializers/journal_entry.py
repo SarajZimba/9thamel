@@ -15,3 +15,4 @@ class JournalEntrySerializer(serializers.Serializer):
     credit_particulars = serializers.ListField(child=serializers.CharField(allow_null=True), required=False)
     credit_amounts = serializers.ListField(child=serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True))
     credit_subledgers = serializers.ListField(child=serializers.CharField(allow_null=True), required=False)
+    outlet_name = serializers.CharField(max_length = 255)

@@ -52,6 +52,8 @@ class VendorDelete(VendorMixin, DeleteMixin, View):
 
 from django.db.models import Q
 from accounting.models import AccountSubLedgerTracking
+from accounting.utils import change_date_to_datetime
+
 class ProductPurchaseCreateView(IsAdminMixin, CreateView):
     model = ProductPurchase
     form_class = ProductPurchaseForm
@@ -73,7 +75,7 @@ class ProductPurchaseCreateView(IsAdminMixin, CreateView):
             subledger = AccountSubLedger.objects.create(sub_ledger_name=subledgername, ledger=debit_account, total_value=item_total)
             subledgertracking = AccountSubLedgerTracking.objects.create(subledger=subledger, new_amount=decimal.Decimal(item_total), value_changed=decimal.Decimal(item_total))
 
-    def create_accounting_multiple_ledger(self, debit_account_id, payment_mode:str, username:str, sub_total, tax_amount, vendor):
+    def create_accounting_multiple_ledger(self, debit_account_id, payment_mode:str, username:str, sub_total, tax_amount, vendor, entry_date):
         sub_total = decimal.Decimal(sub_total)
         tax_amount = decimal.Decimal(tax_amount)
         total_amount =  sub_total+ tax_amount
@@ -81,33 +83,40 @@ class ProductPurchaseCreateView(IsAdminMixin, CreateView):
         cash_ledger = get_object_or_404(AccountLedger, ledger_name='Cash-In-Hand')
         vat_receivable = get_object_or_404(AccountLedger, ledger_name='VAT Receivable')
         debit_account = get_object_or_404(AccountLedger, pk=int(debit_account_id))
+
+        if entry_date:
+
+            entry_datetime_for_cumulativeledger = change_date_to_datetime(entry_date)
+        else:
+            from datetime import datetime
+            entry_datetime_for_cumulativeledger = datetime.now()
         
-        journal_entry = TblJournalEntry.objects.create(employee_name=username, journal_total = total_amount)
+        journal_entry = TblJournalEntry.objects.create(employee_name=username, journal_total = total_amount, entry_date=entry_date)
         TblDrJournalEntry.objects.create(journal_entry=journal_entry, particulars=f"Automatic: {debit_account.ledger_name} A/c Dr.", debit_amount=sub_total, ledger=debit_account)
         debit_account.total_value += sub_total
         debit_account.save()
-        update_cumulative_ledger_bill(debit_account)
+        update_cumulative_ledger_bill(debit_account, entry_datetime_for_cumulativeledger)
         if tax_amount > 0:
             TblDrJournalEntry.objects.create(journal_entry=journal_entry, particulars="Automatic: VAT Receivable A/c Dr.", debit_amount=tax_amount, ledger=vat_receivable)
             vat_receivable.total_value += tax_amount
             vat_receivable.save()
-            update_cumulative_ledger_bill(vat_receivable)
+            update_cumulative_ledger_bill(vat_receivable, entry_datetime_for_cumulativeledger)
         if payment_mode.lower().strip() == "credit":
             try:
                 vendor_ledger = AccountLedger.objects.get(ledger_name=vendor)
                 vendor_ledger.total_value += total_amount
                 vendor_ledger.save()
-                update_cumulative_ledger_bill(vendor_ledger)
+                update_cumulative_ledger_bill(vendor_ledger, entry_datetime_for_cumulativeledger)
             except AccountLedger.DoesNotExist:
                 chart = AccountChart.objects.get(group__iexact='Sundry Creditors')
                 vendor_ledger = AccountLedger.objects.create(ledger_name=vendor, total_value=total_amount, is_editable=True, account_chart=chart)
-                create_cumulative_ledger_bill(vendor_ledger)
+                create_cumulative_ledger_bill(vendor_ledger, entry_datetime_for_cumulativeledger)
             TblCrJournalEntry.objects.create(journal_entry=journal_entry, particulars=f"Automatic: To {vendor_ledger.ledger_name} A/c", credit_amount=total_amount, ledger=vendor_ledger)
         else:
             TblCrJournalEntry.objects.create(journal_entry=journal_entry, particulars=f"Automatic: To {cash_ledger.ledger_name} A/c", credit_amount=total_amount, ledger=cash_ledger)
             cash_ledger.total_value -= total_amount
             cash_ledger.save()
-            update_cumulative_ledger_bill(cash_ledger)
+            update_cumulative_ledger_bill(cash_ledger, entry_datetime_for_cumulativeledger)
 
     def form_invalid(self, form) -> HttpResponse:
         return self.form_valid(form)
@@ -128,7 +137,7 @@ class ProductPurchaseCreateView(IsAdminMixin, CreateView):
         amount_in_words = form_data.get('amount_in_words')
         payment_mode = form_data.get('payment_mode')
         debit_account = form_data.get('debit_account')
-        # print(debit_account)
+
         purchase_object = Purchase(
             bill_no=bill_no,
             vendor_id=vendor_id,sub_total=sub_total, bill_date=bill_date,
@@ -245,7 +254,7 @@ class ProductPurchaseCreateView(IsAdminMixin, CreateView):
             for product_id, ledger_info in product_ledgers.items():
                 ledger_id = int(ledger_info['ledgerId'])
                 total = float(ledger_info['total'])
-                self.create_accounting_multiple_ledger(debit_account_id=ledger_id, payment_mode=payment_mode, username=self.request.user.username, sub_total=total, tax_amount=fraction_tax, vendor=vendor_detail)
+                self.create_accounting_multiple_ledger(debit_account_id=ledger_id, payment_mode=payment_mode, username=self.request.user.username, sub_total=total, tax_amount=fraction_tax, vendor=vendor_detail, entry_date=bill_date)
 
 
         return redirect('/purchase/')

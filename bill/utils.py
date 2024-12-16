@@ -7,8 +7,51 @@ from product.models import Product
 """
 Signal to update Cumulative Ledger
 """
+# from datetime import date
+# def update_cumulative_ledger_bill(instance):
+#     ledger = CumulativeLedger.objects.filter(ledger=instance).last()
+#     if ledger :
+#         total_value = ledger.total_value
+#     else:
+#         total_value = Decimal(0.0)
+#     value_changed = instance.total_value - total_value
+#     if instance.account_chart.account_type in ['Asset', 'Expense']:
+#         if value_changed > 0:
+#                 CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance)
+#         else:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance)
+#     else:
+#         if value_changed > 0:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance)
+#         else:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance)
+
+# def update_cumulative_ledger_expense(instance, journal):
+#     ledger = CumulativeLedger.objects.filter(ledger=instance).last()
+#     if ledger :
+#         total_value = ledger.total_value
+#     else:
+#         total_value = Decimal(0.0)
+#     value_changed = instance.total_value - total_value
+#     if instance.account_chart.account_type in ['Asset', 'Expense']:
+#         if value_changed > 0:
+#                 CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal)
+#         else:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+#     else:
+#         if value_changed > 0:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+#         else:
+#             CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal)
+
+# def create_cumulative_ledger_bill(instance):
+#     if instance.account_chart.account_type in ['Asset', 'Expense']:
+#         CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, debit_amount=instance.total_value)
+#     else:
+#         CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, credit_amount=instance.total_value)
+
 from datetime import date
-def update_cumulative_ledger_bill(instance):
+def update_cumulative_ledger_bill(instance, entry_date):
     ledger = CumulativeLedger.objects.filter(ledger=instance).last()
     if ledger :
         total_value = ledger.total_value
@@ -17,46 +60,39 @@ def update_cumulative_ledger_bill(instance):
     value_changed = instance.total_value - total_value
     if instance.account_chart.account_type in ['Asset', 'Expense']:
         if value_changed > 0:
-                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance)
+                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, entry_date=entry_date)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, entry_date=entry_date)
     else:
         if value_changed > 0:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, entry_date=entry_date)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, entry_date=entry_date)
 
-def update_cumulative_ledger_expense(instance, journal):
+def update_cumulative_ledger_expense(instance, journal, entry_datetime):
     ledger = CumulativeLedger.objects.filter(ledger=instance).last()
     if ledger :
         total_value = ledger.total_value
     else:
         total_value = Decimal(0.0)
     value_changed = instance.total_value - total_value
+    print(value_changed)
     if instance.account_chart.account_type in ['Asset', 'Expense']:
         if value_changed > 0:
-                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal)
+                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_datetime)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_datetime)
     else:
         if value_changed > 0:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_datetime)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_datetime)
 
-def create_cumulative_ledger_bill(instance):
+def create_cumulative_ledger_bill(instance, entry_date):
     if instance.account_chart.account_type in ['Asset', 'Expense']:
-        CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, debit_amount=instance.total_value)
+        CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, debit_amount=instance.total_value, entry_date=entry_date)
     else:
-        CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, credit_amount=instance.total_value)
-    # if instance.account_chart.group == "Sundry Debtors":
-    #     journal = TblJournalEntry.objects.create(employee_name=f"From Debtors form {instance.ledger_name}", journal_total=instance.total_value)
-    #     TblDrJournalEntry.objects.create(ledger=instance, debit_amount=instance.total_value, particulars=f"Automatic: {instance.ledger_name} a/c Dr", journal_entry=journal)
-
-
-    # if instance.account_chart.group == "Sundry Creditors":
-    #     journal = TblJournalEntry.objects.create(employee_name=f"From Creditors form {instance.ledger_name}", journal_total=instance.total_value)
-    #     TblCrJournalEntry.objects.create(ledger=instance, credit_amount=instance.total_value, particulars=f"Automatic: To {instance.ledger_name}", journal_entry=journal)
+        CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=instance.total_value, ledger=instance, credit_amount=instance.total_value, entry_date=entry_date)
 
 
 

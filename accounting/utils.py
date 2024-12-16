@@ -92,7 +92,7 @@ Signal to update Cumulative Ledger
 from datetime import date
 # Though this name is create . It is upadting the ledger entries because the ledger are already created in the cumulative ledger before the journal entries are made 
 # def update_cumulative_ledger_journal(journal, data):
-def create_cumulative_ledger_journal(instance, journal):
+def create_cumulative_ledger_journal(instance, journal, entry_date):
     from .models import CumulativeLedger
 
 
@@ -105,14 +105,14 @@ def create_cumulative_ledger_journal(instance, journal):
     value_changed = instance.total_value - total_value
     if instance.account_chart.account_type in ['Asset', 'Expense']:
         if value_changed > 0:
-                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance,journal=journal)
+                CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance,journal=journal, entry_date=entry_date)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_date)
     else:
         if value_changed > 0:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, credit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_date)
         else:
-            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal)
+            CumulativeLedger.objects.create(account_chart=instance.account_chart, ledger_name=instance.ledger_name, total_value=instance.total_value, value_changed=value_changed, debit_amount=abs(value_changed), ledger=instance, journal=journal, entry_date=entry_date)
 
 def sub_below_cumulative_entries(ledger, value_changed, id):
     from .models import CumulativeLedger
@@ -439,3 +439,84 @@ def soft_delete_journal_expense(journal_entry):
         print(f"An error occurred: {str(e)}")
 
     # return redirect('expense_list')
+
+
+# from datetime import datetime, date, timedelta
+# import pytz
+
+# def change_date_to_datetime(date_str):
+#     """
+#     Converts a date string or date object to a timezone-aware datetime object with time set to 00:00:00.
+    
+#     Args:
+#         date_str (str or datetime.date): The date string or date object to be converted.
+
+#     Returns:
+#         datetime.datetime: The corresponding timezone-aware datetime object.
+#     """
+#     print(f"date_str {date_str}")
+#     if date_str is None:
+#         return None
+
+#     # Nepal timezone
+#     nepal_tz = pytz.timezone("Asia/Kathmandu")
+#     if isinstance(date_str, str):
+#         # Assuming the date string is in 'YYYY-MM-DD' format; adjust as needed
+#         date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+#     elif isinstance(date_str, date):
+#         date_obj = date_str
+#     else:
+#         raise ValueError("Unsupported date format")
+#     print(f"date_obj {date_obj}")
+
+#     naive_datetime = datetime.combine(date_obj, datetime.min.time())
+
+#     print(f"naive_datetime {naive_datetime}")
+
+#     print(f"nepal_time {nepal_tz.localize(naive_datetime)}")
+#     return nepal_tz.localize(naive_datetime)
+
+
+from datetime import datetime, date, timedelta
+import pytz
+
+def change_date_to_datetime(date_str):
+    """
+    Converts a date string or date object to a timezone-aware datetime object with time set to 00:00:00,
+    adds 5 hours and 45 minutes to align with UTC, and returns the adjusted datetime.
+
+    Args:
+        date_str (str or datetime.date): The date string or date object to be converted.
+
+    Returns:
+        datetime.datetime: The corresponding adjusted timezone-aware datetime object.
+    """
+    print(f"date_str {date_str}")
+    if date_str is None:
+        return None
+
+    # Nepal timezone
+    nepal_tz = pytz.timezone("Asia/Kathmandu")
+
+    if isinstance(date_str, str):
+        # Assuming the date string is in 'YYYY-MM-DD' format; adjust as needed
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+    elif isinstance(date_str, date):
+        date_obj = date_str
+    else:
+        raise ValueError("Unsupported date format")
+    print(f"date_obj {date_obj}")
+
+    # Convert date to datetime with time set to 00:00:00
+    naive_datetime = datetime.combine(date_obj, datetime.min.time())
+    print(f"naive_datetime {naive_datetime}")
+
+    # Make it timezone-aware for Nepal timezone
+    nepal_datetime = nepal_tz.localize(naive_datetime)
+    print(f"nepal_datetime {nepal_datetime}")
+
+    # Add 5 hours and 45 minutes offset to align with UTC
+    adjusted_datetime = nepal_datetime + timedelta(hours=5, minutes=45)
+    print(f"adjusted_datetime {adjusted_datetime}")
+
+    return adjusted_datetime

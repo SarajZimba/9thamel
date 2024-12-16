@@ -28,8 +28,9 @@
         {{ field.errors }}
       </div>
     {% endfor %}
-    {% if object.is_editable %}
+
     <button type="submit" id="submit" class="btn btn-primary">Update</button>
+    {% if object.is_editable %}
     {% if no_transaction_exists %}
     <a href="{% url 'accountledger_delete' object.id %}"><button type="button" class="btn btn-danger my-2 me-12" >Delete</button></a>
     {% endif %}

@@ -2,20 +2,13 @@ from decimal import Decimal
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from accounting.models import AccountLedger, AccountSubLedger, TblJournalEntry, TblCrJournalEntry, TblDrJournalEntry, TrackBill
-from api.serializers.journal_entry import JournalEntrySerializer
-from django.shortcuts import render
+from accounting.models import AccountLedger, AccountSubLedger, TblJournalEntry, TblCrJournalEntry, TblDrJournalEntry, TrackBill, AccountSubLedgerTracking
 
-
-
-from decimal import Decimal
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from accounting.models import AccountLedger, TblJournalEntry, AccountSubLedger
 from api.serializers.credit_journal_entry import CreditJournalEntrySerializer  # Import your serializer
 from accounting.models import AccountChart
-from datetime import date 
+from datetime import date, datetime
+
+from api.views.journal_entry import check_outlet_subledger
 
 from accounting.utils import update_cumulative_ledger_journal, create_cumulative_ledger_journal
 class CreditJournalEntryAPIView(APIView):
@@ -32,6 +25,7 @@ class CreditJournalEntryAPIView(APIView):
 
     def post(self, request):
         entry_date = date.today()
+        entry_datetime = datetime.now()
         data_list = request.data  # Assuming you receive a list of JSON objects
         response_data = []
         
@@ -59,9 +53,15 @@ class CreditJournalEntryAPIView(APIView):
                 credit_particulars = data['credit_particulars']
                 credit_amounts = data['credit_amounts']
                 # credit_subledgers = data['credit_subledgers']
-                datetime = data['datetime']
+                posted_datetime = data['datetime']
                 bill_no = data['bill_id']
                 username = data['user']
+                outlet_name = data['outlet_name']
+
+                try:
+                    outlet_subledger = check_outlet_subledger(outlet_name)
+                except Exception as e:
+                    return Response({'message': 'Error occured while creating the outlet subledger'}, 400)
 
                 try:
                     sundry_debtors_object = AccountChart.objects.get(group="Sundry Debtors")
@@ -132,12 +132,12 @@ class CreditJournalEntryAPIView(APIView):
 
 
 
-                if TrackBill.objects.filter(datetime=datetime, bill=bill_no).exists():
+                if TrackBill.objects.filter(datetime=posted_datetime, bill=bill_no).exists():
                     response_data.append({'message': 'Entry with the same datetime and bill number already exists'})
                     continue
                 
                 else:
-                    TrackBill.objects.create(datetime=datetime, bill=bill_no)
+                    TrackBill.objects.create(datetime=posted_datetime, bill=bill_no)
 
                 credit_to_debit_mapping = {}
 
@@ -159,17 +159,23 @@ class CreditJournalEntryAPIView(APIView):
                     if credit_ledger_type in ['Asset', 'Expense']:
                         credit_ledger.total_value = credit_ledger.total_value - credit_amount
                         credit_ledger.save()
-                        create_cumulative_ledger_journal(credit_ledger, journal_entry)
+                        create_cumulative_ledger_journal(credit_ledger, journal_entry, entry_datetime)
                         # if subledger:
                         #     subledger.total_value = subledger.total_value - credit_amount
                         #     subledger.save()
                     elif credit_ledger_type in ['Liability', 'Revenue', 'Equity']:
                         credit_ledger.total_value = credit_ledger.total_value + credit_amount
                         credit_ledger.save()
-                        create_cumulative_ledger_journal(credit_ledger, journal_entry)
-                        # if subledger:
-                        #     subledger.total_value = subledger.total_value + credit_amount
-                        #     subledger.save()
+                        create_cumulative_ledger_journal(credit_ledger, journal_entry, entry_datetime)
+                        if credit_ledger.ledger_name == "Sales":
+                            prev_value = outlet_subledger.total_value
+                            subledgertracking = AccountSubLedgerTracking.objects.create(subledger = outlet_subledger, prev_amount= prev_value, journal=journal_entry)
+
+                            outlet_subledger.total_value = outlet_subledger.total_value + credit_amount
+                            outlet_subledger.save()
+                            subledgertracking.new_amount=outlet_subledger.total_value
+                            subledgertracking.value_changed = outlet_subledger.total_value - prev_value
+                            subledgertracking.save()
 
                 # Process debit entries
                 for i in range(len(debit_ledgers)):
@@ -186,14 +192,14 @@ class CreditJournalEntryAPIView(APIView):
                     if debit_ledger_type in ['Asset', 'Expense']:
                         debit_ledger.total_value = debit_ledger.total_value + debit_amount
                         debit_ledger.save()
-                        create_cumulative_ledger_journal(debit_ledger, journal_entry)
+                        create_cumulative_ledger_journal(debit_ledger, journal_entry, entry_datetime)
                         # if subledger:
                         #     subledger.total_value = subledger.total_value + debit_amount
                         #     subledger.save()
                     elif debit_ledger_type in ['Liability', 'Revenue', 'Equity']:
                         debit_ledger.total_value = debit_ledger.total_value - debit_amount
                         debit_ledger.save()
-                        create_cumulative_ledger_journal(debit_ledger, journal_entry)
+                        create_cumulative_ledger_journal(debit_ledger, journal_entry, entry_datetime)
                         # if subledger:
                         #     subledger.total_value = subledger.total_value - debit_amount
                         #     subledger.save()
@@ -201,7 +207,8 @@ class CreditJournalEntryAPIView(APIView):
                 response_data.append({'message': 'Journal entry created successfully'})
 
             else:
-                response_data.append({'error': serializer.errors}, 400)
+                print(serializer.errors)
+                response_data.append({'error': str(serializer.errors)}, 400)
 
 
         return Response(response_data, status=status.HTTP_201_CREATED)

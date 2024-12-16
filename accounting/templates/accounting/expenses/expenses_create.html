@@ -106,6 +106,12 @@
 </div>
 
 <script>
+
+function disableSubmitButton() {
+        const submitButton = document.getElementById('submit-button');
+        submitButton.disabled = true;
+    }
+
 function updateSubLedgers() {
     const ledgerField = document.getElementById('ledger');
     const subledgerField = document.getElementById('sub_ledger');
