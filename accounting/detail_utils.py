@@ -77,17 +77,20 @@ def give_detail(from_date, to_date):
         to_date_str = to_date
         from_date = datetime.strptime(from_date_str, '%Y-%m-%d')
         to_date = datetime.strptime(to_date_str, '%Y-%m-%d')
-        # to_date = to_date + timedelta(days=1)
+        to_date = to_date + timedelta(days=1)
         current_fiscal_year = Organization.objects.last().current_fiscal_year
         first_date=None
         last_date=None
+        # before_transactions = CumulativeLedger.objects.filter(entry_date__lt=from_date).order_by('entry_date')
         before_transactions = CumulativeLedger.objects.filter(entry_date__lt=from_date).order_by('created_at')
-        filtered_transactions = CumulativeLedger.objects.filter(Q(entry_date__range=[from_date, to_date]) , (Q(debit_amount__gt=0) | Q(credit_amount__gt=0))).order_by('created_at')
+        # print(f" before_transactions : {before_transactions}")
+        # filtered_transactions = CumulativeLedger.objects.filter(created_at__range=[from_date, to_date], total_value__gt=0)
+        filtered_transactions = CumulativeLedger.objects.filter(Q(entry_date__range=[from_date, to_date]) , (Q(debit_amount__gt=0) | Q(credit_amount__gt=0)))
+        # filtered_transactions = CumulativeLedger.objects.filter(created_at__range=[from_date, to_date])
         filtered_sum = filtered_transactions.values('ledger_name', 'account_chart__account_type', 'account_chart__group', 'ledger' ).annotate(Sum('debit_amount'), Sum('credit_amount'), Sum('value_changed'))
+        # before_transactions_sum = before_transactions.values('ledger_name', 'account_chart__account_type', 'account_chart__group', 'ledger' ).annotate(Sum('debit_amount'), Sum('credit_amount'), Sum('value_changed'))
         print(f"filtered_sum {filtered_sum}") 
-
         ledgers_for_closing = AccountLedger.objects.all()
-
 
         if from_date and to_date:
         
@@ -108,6 +111,10 @@ def give_detail(from_date, to_date):
                     data['group'] = account_group  # Use account_group here
                     data['id'] = led['ledger']
                     ledger_in_beforetransactions = before_transactions.filter(ledger_name=led['ledger_name'])
+                    # if ledger_in_beforetransactions:
+                    #     data['opening'] = ledger_in_beforetransactions.last().total_value 
+                    # else:
+                    #     data['opening'] = 0 
                     if ledger_in_beforetransactions:
                         before_transactions_sum = ledger_in_beforetransactions.aggregate(
                                         total_debit=Sum('debit_amount'),
@@ -120,35 +127,13 @@ def give_detail(from_date, to_date):
                         # data['opening'] = ledger_in_beforetransactions.last().total_value 
                     else:
                         data['opening'] = 0 
+                    
 
-                    # latest_closingvalue_transactions = ledgers_for_closing.filter(ledger_name=led['ledger_name'])
-                    # if latest_closingvalue_transactions:
-                    #     data["closing"] = latest_closingvalue_transactions.last().total_value
-
-                    # else:
-                    #     data["closing"] = 0
-                    # else:
-                    #     if account_type in ['Asset', 'Expense']: 
-                    #         data["closing"] = led['debit_amount__sum'] - led['credit_amount__sum']
-                    #     else:
-                    #         data["closing"] = led['credit_amount__sum'] - led['debit_amount__sum']      
                     if Organization.objects.first().show_zero_ledgers:
                         subledgers = AccountSubLedger.objects.filter(ledger_id = led['ledger'])
                     else:
                         subledgers = AccountSubLedger.objects.filter(ledger_id = led['ledger'], total_value__gt=0.0)
                     subledger_entries = get_subledger_data(from_date, to_date, subledgers)
-
-        #             # subledgers = AccountSubLedger.objects.filter(ledger_id = led.id)
-    
-                    # subledger_entries = []
-
-                    # for subledger in subledgers:
-                    #     subledger_data = {
-                    #         'subledger': subledger.sub_ledger_name,
-                    #         'total_value': subledger.total_value
-                    #     }
-
-                        # subledger_entries.append(subledger_data)
 
                     data['subledgers'] = subledger_entries
                     if account_type in ['Asset', 'Expense']:
@@ -192,9 +177,11 @@ def give_detail(from_date, to_date):
                         if account_group == "Sundry Debtors":
                                 data['closing'] = data['opening'] + data['debit'] - data['credit']    
                                 # data['opening'] = data['closing'] - data['debit'] + data['credit']    
+
                         else:
-                                data['closing'] = data['opening'] + data['credit'] - data['debit']                                    
+                                data['closing'] = data['opening'] + data['credit'] - data['debit'] 
                                 # data['opening'] = data['closing'] - data['credit'] + data['debit']                                    
+
         #             # Use the ledger name as a key to avoid redundancy
                     ledger_name = data['ledger']
                     if ledger_name not in ledger_dict:
@@ -258,9 +245,24 @@ def give_detail(from_date, to_date):
                                             }
 
                                     ledger_dict[ledger.ledger_name] = context
-        #         # Convert the dictionary values to a list
-                # print(ledger_dict)      
+                    # if ledger.ledger_name not in ledger_dict:
+                    #     if CumulativeLedger.objects.filter(ledger = ledger, total_value__gt=0).exists():
+                    #             context = {'account_type': ledger.account_chart.account_type, 
+                    #                     'ledger': ledger.ledger_name, 
+                    #                     'group': ledger.account_chart.group, 
+                    #                     'id': ledger.id, 
+                    #                     'opening': before_transactions.filter(ledger_name=ledger.ledger_name).last().total_value if before_transactions.filter(ledger_name=ledger.ledger_name) else 0, 
+                    #                     #   'opening': ledgers_for_closing.filter(ledger_name=ledger.ledger_name).last().total_value if ledgers_for_closing.filter(ledger_name=ledger.ledger_name) else 0,
+                    #                     'subledgers': [], 
+                    #                     'credit': 0, 
+                    #                     'debit': 0, 
+                    #                     'closing': before_transactions.filter(ledger_name=ledger.ledger_name).last().total_value if before_transactions.filter(ledger_name=ledger.ledger_name) else 0}
+                    #                     # 'closing': ledgers_for_closing.filter(ledger_name=ledger.ledger_name).last().total_value if ledgers_for_closing.filter(ledger_name=ledger.ledger_name) else 0}
 
+                    #             ledger_dict[ledger.ledger_name] = context
+                                
+                                
+               # Convert the dictionary values to a list
                 ledger_entries = list(ledger_dict.values())
 
                 for entry in ledger_entries:

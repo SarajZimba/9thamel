@@ -460,6 +460,7 @@ def soft_delete_journal_expense(journal_entry):
 
 #     # Nepal timezone
 #     nepal_tz = pytz.timezone("Asia/Kathmandu")
+
 #     if isinstance(date_str, str):
 #         # Assuming the date string is in 'YYYY-MM-DD' format; adjust as needed
 #         date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -469,7 +470,11 @@ def soft_delete_journal_expense(journal_entry):
 #         raise ValueError("Unsupported date format")
 #     print(f"date_obj {date_obj}")
 
-#     naive_datetime = datetime.combine(date_obj, datetime.min.time())
+#     # Add one day to the date
+#     updated_date = date_obj + timedelta(days=1)
+#     print(f"updated_date {updated_date}")
+#     # Convert to datetime and make it timezone-aware
+#     naive_datetime = datetime.combine(updated_date, datetime.min.time())
 
 #     print(f"naive_datetime {naive_datetime}")
 
@@ -515,7 +520,7 @@ def change_date_to_datetime(date_str):
     nepal_datetime = nepal_tz.localize(naive_datetime)
     print(f"nepal_datetime {nepal_datetime}")
 
-    # Add 5 hours and 45 minutes offset to align with UTC
+    # Add 5 hours and 45 minutes offset to align with UTC with our nepali time 
     adjusted_datetime = nepal_datetime + timedelta(hours=5, minutes=45)
     print(f"adjusted_datetime {adjusted_datetime}")
 
