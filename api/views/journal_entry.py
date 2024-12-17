@@ -107,8 +107,10 @@ class JournalEntryAPIView(APIView):
                     credit_particular = credit_particulars[i]
                     credit_amount = parsed_creditamt[i]
                     credit_ledger_type = credit_ledger.account_chart.account_type
-                    TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry, particulars=credit_particular, credit_amount=credit_amount)
-
+                    if credit_ledger.ledger_name == "Sales":                    
+                        TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry, particulars=credit_particular, credit_amount=credit_amount, sub_ledger=outlet_subledger)
+                    else:
+                        TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry, particulars=credit_particular, credit_amount=credit_amount)                        
                     # Update ledger and subledger totals
                     if credit_ledger_type in ['Asset', 'Expense']:
                         credit_ledger.total_value = credit_ledger.total_value - credit_amount

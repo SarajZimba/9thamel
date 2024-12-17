@@ -15,7 +15,9 @@ from .bill_todayid import urlpatterns as bill_todayid_urlpatterns
 from .journal_entry import urlpatterns as journal_entry_urls
 from .credit_journal_entry import urlpatterns as credit_journal_entry_urls
 from .give_ledger import urlpatterns as give_ledger_urls
+from .vendor import urlpatterns as vendor_urlpatterns
+
 
 urlpatterns = (
-    [] + user_urlpatterns + product_urlpatterns + bill_urlpatterns + org_urlpatterns+discount_urlspatterns+purchaserequisition_urlpattern+accounting_urlpatterns+mobile_urlpatterns+enddayreport_urlpatterns+todayreport_urlpatterns+category_wise_sale_urlpatterns +report_urlpatterns+ master_urlpatterns+ bill_todayid_urlpatterns+ journal_entry_urls  + credit_journal_entry_urls + give_ledger_urls
+    [] + user_urlpatterns + product_urlpatterns + bill_urlpatterns + org_urlpatterns+discount_urlspatterns+purchaserequisition_urlpattern+accounting_urlpatterns+mobile_urlpatterns+enddayreport_urlpatterns+todayreport_urlpatterns+category_wise_sale_urlpatterns +report_urlpatterns+ master_urlpatterns+ bill_todayid_urlpatterns+ journal_entry_urls  + credit_journal_entry_urls + give_ledger_urls + vendor_urlpatterns
 )
